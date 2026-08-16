@@ -1,0 +1,7 @@
+<svg fill="none" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <title>Acceso</title>
+  <rect fill="#efe8de" height="32" rx="8" width="32" />
+  <rect fill="#1b1814" height="16" rx="1.5" width="5" x="5" y="8" />
+  <rect fill="#1b1814" height="16" rx="1.5" width="5" x="12.5" y="8" />
+  <rect fill="#3a4540" height="16" rx="1.5" width="5" x="20" y="8" />
+</svg>

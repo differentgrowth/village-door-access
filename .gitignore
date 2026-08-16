@@ -1,0 +1,17 @@
+node_modules
+src/generated
+dist
+.output
+.nitro
+.vercel
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+artifacts
+screenshots
+.grok
+.local
+.idea
+.vscode

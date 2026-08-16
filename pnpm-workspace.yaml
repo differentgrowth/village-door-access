@@ -1,0 +1,7 @@
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+minimumReleaseAgeExclude:
+  - ultracite@7.10.5
+overrides:
+  nf3: 0.3.17

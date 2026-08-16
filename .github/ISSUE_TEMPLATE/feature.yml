@@ -1,0 +1,18 @@
+name: Feature
+description: A change to Locations, Visits, Access Codes, or Admin
+labels: [needs-triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Who is blocked today (Visitor or Operator), and where?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Stay inside the glossary. If you need a new term, say so.
+    validations:
+      required: true

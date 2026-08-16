@@ -1,0 +1,54 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A physical door. Owns the current Access Code, Access Code History, and Visits.
+model Location {
+  id          String       @id
+  name        String       @unique
+  currentCode String?      @map("current_code")
+  rotatedAt   DateTime?    @map("rotated_at") @db.Timestamptz(6)
+  archivedAt  DateTime?    @map("archived_at") @db.Timestamptz(6)
+  visitCount  Int          @default(0) @map("visit_count")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  accessCodes AccessCode[]
+  visits      Visit[]
+
+  @@map("locations")
+}
+
+/// A recorded appearance at a Location. Erased after 90 days; Visit count stays.
+model Visit {
+  id          String   @id
+  visitorName String   @map("visitor_name")
+  accessCode  String   @map("access_code")
+  visitedAt   DateTime @default(now()) @map("visited_at") @db.Timestamptz(6)
+  emailSent   Boolean  @default(false) @map("email_sent")
+  emailError  String?  @map("email_error")
+  locationId  String   @map("location_id")
+  location    Location @relation(fields: [locationId], references: [id])
+
+  @@index([visitedAt(sort: Desc)], map: "visits_visited_at_idx")
+  @@index([locationId], map: "visits_location_id_idx")
+  @@map("visits")
+}
+
+/// One Access Code issued at a Location. Exactly one per Location is current.
+model AccessCode {
+  id         String    @id
+  code       String
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt    DateTime? @map("ended_at") @db.Timestamptz(6)
+  locationId String    @map("location_id")
+  location   Location  @relation(fields: [locationId], references: [id])
+
+  @@index([startedAt(sort: Desc)], map: "access_codes_started_at_idx")
+  @@map("access_codes")
+}
