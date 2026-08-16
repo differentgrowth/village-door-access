@@ -50,21 +50,29 @@ import {
   rotateCode,
   type VisitRow,
 } from "@/lib/access.functions";
-import { parseLocationSearch } from "@/lib/location-search";
+import {
+  parseLocationSearch,
+  pickAdminLocationId,
+} from "@/lib/location-search";
 import { rethrowPublic } from "@/lib/public-error";
 import { formatDateTime, formatShortDateTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
   validateSearch: parseLocationSearch,
-  loaderDeps: ({ search }) => ({ locationId: search.location }),
-  loader: async ({ deps }) => {
+  // Location focus comes from search. A locationId loaderDep would block the click.
+  staleTime: 30_000,
+  loader: async ({ location }) => {
     try {
       const session = await getAdminSession();
       if (!session.ok) {
         throw redirect({ to: "/login" });
       }
       const state = await getAdminState({
-        data: { locationId: deps.locationId },
+        data: {
+          locationId: parseLocationSearch(
+            location.search as Record<string, unknown>
+          ).location,
+        },
       });
       const locationId = state.selectedLocationId;
       const [visitData, codeData] = locationId
@@ -89,6 +97,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const initial = Route.useLoaderData();
+  const search = Route.useSearch();
   const router = useRouter();
   const navigate = Route.useNavigate();
   const [state, setState] = useState(initial.state);
@@ -106,8 +115,10 @@ function AdminPage() {
     )?.name ?? ""
   );
 
-  const selectedId = state.selectedLocationId ?? "";
+  const selectedId =
+    pickAdminLocationId(state.locations, search.location) ?? "";
   const selected = state.locations.find((row) => row.id === selectedId);
+  const locationDataReady = state.selectedLocationId === selectedId;
 
   useEffect(() => {
     setState(initial.state);
@@ -129,13 +140,19 @@ function AdminPage() {
     let cancelled = false;
     setLoadingLists(true);
     Promise.all([
+      getAdminState({ data: { locationId: selectedId } }),
       listVisits({ data: { locationId: selectedId } }),
       listAccessCodes({ data: { locationId: selectedId } }),
     ])
-      .then(([visitData, codeData]) => {
+      .then(([next, visitData, codeData]) => {
         if (cancelled) {
           return;
         }
+        setState(next);
+        setRenameValue(
+          next.locations.find((row) => row.id === next.selectedLocationId)
+            ?.name ?? ""
+        );
         setVisits(visitData.visits);
         setTodayCount(visitData.todayCount);
         setTotalCount(visitData.totalCount);
@@ -172,9 +189,14 @@ function AdminPage() {
   const onSelectLocation = useCallback(
     async (locationId: string) => {
       setConfirmRotate(false);
+      setVisits([]);
+      setCodes([]);
+      setRenameValue(
+        state.locations.find((row) => row.id === locationId)?.name ?? ""
+      );
       await navigate({ search: { location: locationId } });
     },
-    [navigate]
+    [navigate, state.locations]
   );
 
   const onRenameChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
@@ -317,11 +339,11 @@ function AdminPage() {
           <h1 className="font-display font-medium text-2xl tracking-tight">
             Gestión
           </h1>
-          <p className="text-muted-foreground text-sm">
-            Hoy: {todayCount} {todayCount === 1 ? "visita" : "visitas"}
-            {" · "}
-            Total: {totalCount}
-          </p>
+          <VisitCountLine
+            ready={locationDataReady}
+            todayCount={todayCount}
+            totalCount={totalCount}
+          />
         </div>
         <Button onClick={onLogout} size="sm" type="button" variant="ghost">
           <LogOut data-icon="inline-start" />
@@ -381,41 +403,15 @@ function AdminPage() {
         <LocationQrCard locationId={selected.id} locationName={selected.name} />
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Código actual</CardTitle>
-          <CardDescription>
-            Rotado el {formatDateTime(state.rotatedAt)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CodeDigits code={state.code} size="md" />
-          {state.archived ? (
-            <p className="mt-3 text-muted-foreground text-sm">
-              Esta ubicación está archivada. No aparece en la entrada.
-            </p>
-          ) : (
-            <>
-              <Button
-                className="mt-4 w-full"
-                disabled={busy}
-                onClick={onRotate}
-                size="lg"
-                type="button"
-                variant={confirmRotate ? "destructive" : "default"}
-              >
-                <RotateIcon busy={busy} confirm={confirmRotate} />
-                Rotar código
-              </Button>
-              {confirmRotate ? (
-                <p className="mt-2 text-muted-foreground text-xs">
-                  El código anterior dejará de abrir la puerta.
-                </p>
-              ) : null}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <CurrentCodeCard
+        archived={Boolean(selected?.archived)}
+        busy={busy}
+        code={state.code}
+        confirmRotate={confirmRotate}
+        onRotate={onRotate}
+        ready={locationDataReady}
+        rotatedAt={state.rotatedAt}
+      />
 
       {initial.session.emailConfigured ? (
         <p className="rounded-xl bg-chip px-4 py-3 text-muted-foreground text-xs leading-relaxed">
@@ -524,6 +520,82 @@ function AdminPage() {
         </Link>
       </p>
     </main>
+  );
+}
+
+function VisitCountLine({
+  ready,
+  todayCount,
+  totalCount,
+}: {
+  ready: boolean;
+  todayCount: number;
+  totalCount: number;
+}) {
+  return (
+    <p className="text-muted-foreground text-sm">
+      {ready
+        ? `Hoy: ${todayCount} ${todayCount === 1 ? "visita" : "visitas"} · Total: ${totalCount}`
+        : "Cargando registro…"}
+    </p>
+  );
+}
+
+function CurrentCodeCard({
+  archived,
+  busy,
+  code,
+  confirmRotate,
+  onRotate,
+  ready,
+  rotatedAt,
+}: {
+  archived: boolean;
+  busy: boolean;
+  code: string;
+  confirmRotate: boolean;
+  onRotate: () => void;
+  ready: boolean;
+  rotatedAt: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Código actual</CardTitle>
+        <CardDescription>
+          {ready
+            ? `Rotado el ${formatDateTime(rotatedAt)}`
+            : "Cargando código…"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <CodeDigits code={ready ? code : undefined} size="md" />
+        {archived ? (
+          <p className="mt-3 text-muted-foreground text-sm">
+            Esta ubicación está archivada. No aparece en la entrada.
+          </p>
+        ) : (
+          <>
+            <Button
+              className="mt-4 w-full"
+              disabled={busy || !ready}
+              onClick={onRotate}
+              size="lg"
+              type="button"
+              variant={confirmRotate ? "destructive" : "default"}
+            >
+              <RotateIcon busy={busy} confirm={confirmRotate} />
+              Rotar código
+            </Button>
+            {confirmRotate ? (
+              <p className="mt-2 text-muted-foreground text-xs">
+                El código anterior dejará de abrir la puerta.
+              </p>
+            ) : null}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

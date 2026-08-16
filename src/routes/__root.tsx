@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 const APP_NAME = "Acceso";
 
 export const Route = createRootRoute({
+  staleTime: 60_000,
   head: () => ({
     meta: [
       { charSet: "utf-8" },

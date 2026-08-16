@@ -16,17 +16,18 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getPublicState, registerVisit } from "@/lib/access.functions";
-import { parseLocationSearch } from "@/lib/location-search";
+import {
+  parseLocationSearch,
+  pickPublicLocationId,
+} from "@/lib/location-search";
 import { rethrowPublic } from "@/lib/public-error";
 import { formatDateTime } from "@/lib/utils";
 
 export const Route = createFileRoute("/")({
   validateSearch: parseLocationSearch,
-  loaderDeps: ({ search }) => ({ locationId: search.location }),
-  loader: ({ deps }) =>
-    getPublicState({ data: { locationId: deps.locationId } }).catch(
-      rethrowPublic
-    ),
+  // Location focus comes from search. A locationId loaderDep would block the click.
+  staleTime: 60_000,
+  loader: () => getPublicState().catch(rethrowPublic),
   component: Home,
 });
 
@@ -34,7 +35,11 @@ function Home() {
   const state = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const selectedId = state.selectedLocationId ?? "";
+  const selectedId =
+    pickPublicLocationId(
+      state.locations.map((row) => row.id),
+      search.location
+    ) ?? "";
   const requestedUnavailable = Boolean(search.location) && !selectedId;
   const [name, setName] = useState("");
   const [honeypot, setHoneypot] = useState("");

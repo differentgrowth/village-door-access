@@ -20,3 +20,17 @@ export function pickPublicLocationId(
   }
   return activeIds[0] ?? null;
 }
+
+/** Admin: honor a requested Location if it exists, including archived. */
+export function pickAdminLocationId(
+  rows: readonly { archived: boolean; id: string }[],
+  requestedId: string | undefined
+): string | null {
+  if (requestedId) {
+    const match = rows.find((row) => row.id === requestedId);
+    if (match) {
+      return match.id;
+    }
+  }
+  return rows.find((row) => !row.archived)?.id ?? rows[0]?.id ?? null;
+}
