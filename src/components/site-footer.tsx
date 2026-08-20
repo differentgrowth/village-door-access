@@ -1,4 +1,4 @@
-import { Github, Heart } from "lucide-react";
+import { GitBranch, Heart } from "lucide-react";
 
 const DESIGNER_HREF = "https://www.differentgrowth.com";
 const REPO_HREF = "https://github.com/differentgrowth/village-door-access";
@@ -22,7 +22,7 @@ export function SiteFooter() {
         rel="noreferrer"
         target="_blank"
       >
-        <Github aria-hidden="true" className="size-4" />
+        <GitBranch aria-hidden="true" className="size-4" />
       </a>
     </footer>
   );
