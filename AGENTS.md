@@ -86,9 +86,7 @@ treating work as done.
 
 ### Issue tracker
 
-GitHub Issues via `gh` on public `differentgrowth/village-door-access` (MIT).
-Security reports use private advisories, not issues. See
-`docs/agents/issue-tracker.md`.
+Issues live as local markdown under `.scratch/` (Origin has no issues). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
