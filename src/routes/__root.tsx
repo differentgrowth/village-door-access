@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Toaster } from "sonner";
 import { SiteFooter } from "@/components/site-footer";
 import { getAdminSession } from "@/lib/access.functions";
@@ -81,6 +82,7 @@ function RootDocument() {
               "!bg-surface !text-fg !border-border !shadow-[var(--shadow-paper)] font-sans",
           }}
         />
+        <SpeedInsights />
         <Scripts />
       </body>
     </html>
